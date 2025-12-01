@@ -1,0 +1,11 @@
+@"
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+.DS_Store
+static/results/
+"@ | Out-File -Encoding utf8 .gitignore

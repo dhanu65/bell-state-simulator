@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bell State Entanglement Simulator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body {
+      background-color: #0d0f11;
+      color: #ffcc00;
+      font-family: "Poppins", sans-serif;
+      text-align: center;
+      transition: background 0.4s, color 0.4s;
+    }
+    .container { margin-top: 40px; }
+    h1 { font-size: 2.2rem; margin-bottom: 10px; }
+
+    select, input {
+      margin: 10px;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    #simulateBtn, #resetBtn, #modeToggle {
+      border: none;
+      padding: 10px 18px;
+      margin: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.2s, background 0.3s;
+    }
+    #simulateBtn { background-color: #ffcc00; color: black; }
+    #resetBtn, #modeToggle { background-color: #007bff; color: white; }
+    #simulateBtn:hover, #resetBtn:hover, #modeToggle:hover {
+      transform: scale(1.05);
+    }
+
+    #result-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 30px;
+    }
+
+    .result-card {
+      background: #111;
+      padding: 15px;
+      border-radius: 12px;
+      width: 280px;
+      color: #ffcc00;
+      box-shadow: 0 0 12px rgba(255,255,255,0.1);
+      transition: transform 0.2s;
+    }
+    .result-card:hover { transform: scale(1.05); }
+
+    .result-card img {
+      width: 100%;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* Small descriptive text below titles */
+    .desc {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin: 6px 0 10px 0;
+      font-style: italic;
+    }
+    .light-mode .desc { color: #555; }
+
+    #descBox {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 10px;
+      color: #00e6e6;
+      font-size: 1rem;
+      font-style: italic;
+      width: 70%;
+      margin: 15px auto;
+      display: none;
+      box-shadow: 0 0 10px #00e6e6;
+      border: 1px solid #00e6e6;
+      background: rgba(0, 20, 40, 0.5);
+    }
+
+    /* Zoom modal */
+    #zoomModal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9);
+    }
+    #zoomModal img {
+      display: block;
+      margin: 100px auto;
+      max-width: 80%;
+    }
+    .close {
+      position: absolute;
+      top: 30px;
+      right: 50px;
+      color: white;
+      font-size: 40px;
+      cursor: pointer;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      display: none;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      z-index: 999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    .spinner {
+      border: 6px solid #ccc;
+      border-top: 6px solid #ffcc00;
+      border-radius: 50%;
+      width: 60px; height: 60px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 10px;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    /* ✅ Toast notification */
+    #toast {
+      visibility: hidden;
+      min-width: 280px;
+      background-color: #00c853;
+      color: #fff;
+      text-align: center;
+      border-radius: 8px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1001;
+      left: 50%;
+      bottom: 30px;
+      transform: translateX(-50%);
+      font-weight: 600;
+      box-shadow: 0px 0px 10px rgba(0,0,0,0.4);
+      transition: visibility 0s, opacity 0.4s ease;
+      opacity: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🧠 Bell State Entanglement Simulator</h1>
+
+    <label for="bellState">Select Bell State:</label>
+    <select id="bellState">
+      <option value="">-- Choose a Bell State --</option>
+      <option value="phi_plus">|Φ⁺⟩ = (|00⟩ + |11⟩)/√2</option>
+      <option value="phi_minus">|Φ⁻⟩ = (|00⟩ − |11⟩)/√2</option>
+      <option value="psi_plus">|Ψ⁺⟩ = (|01⟩ + |10⟩)/√2</option>
+      <option value="psi_minus">|Ψ⁻⟩ = (|01⟩ − |10⟩)/√2</option>
+    </select>
+
+    <div id="descBox"></div>
+
+    <label for="shots">Number of Shots:</label>
+    <input type="number" id="shots" min="100" max="10000" value="1024" />
+
+    <div>
+      <button id="simulateBtn">Run Simulation</button>
+      <button id="resetBtn">Reset</button>
+      <button id="modeToggle">🌙 Toggle Dark/Light</button>
+    </div>
+
+    <!-- ✅ Visualization Cards with Descriptions -->
+    <div id="result-container">
+      <div class="result-card" title="Shows the gate sequence that creates entanglement.">
+        <b>Quantum Circuit</b>
+        <p class="desc">Shows the gate sequence that creates entanglement.</p>
+        <img id="circuitImg">
+      </div>
+
+      <div class="result-card" title="Bloch Sphere shows qubit phase and superposition.">
+        <b>Bloch Sphere</b>
+        <p class="desc">Bloch Sphere shows qubit phase and superposition.</p>
+        <img id="blochImg">
+      </div>
+
+      <div class="result-card" title="Displays the measured probabilities of quantum states.">
+        <b>Measurement Histogram</b>
+        <p class="desc">Displays the measured probabilities of quantum states.</p>
+        <img id="histImg">
+      </div>
+
+      <div class="result-card" title="Lists quantum amplitude (α, β) values of entangled qubits.">
+        <b>Statevector</b>
+        <p class="desc">Lists quantum amplitude (α, β) values of entangled qubits.</p>
+        <pre id="state-text" style="color:#00ffff;text-align:left;overflow-x:auto;white-space:pre-wrap;"></pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="zoomModal">
+    <span class="close">&times;</span>
+    <img id="zoomImg">
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Simulation Running... Please wait ⏳</p>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    const simulateBtn = document.getElementById("simulateBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const modeToggle = document.getElementById("modeToggle");
+    const bellStateSelect = document.getElementById("bellState");
+    const stateText = document.getElementById("state-text");
+    const descBox = document.getElementById("descBox");
+    const zoomModal = document.getElementById("zoomModal");
+    const zoomImg = document.getElementById("zoomImg");
+    const imgs = {
+      circuit: document.getElementById("circuitImg"),
+      bloch: document.getElementById("blochImg"),
+      hist: document.getElementById("histImg")
+    };
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.style.visibility = "visible";
+      toast.style.opacity = "1";
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.style.visibility = "hidden", 400);
+      }, 2500);
+    }
+
+    simulateBtn.addEventListener("click", async () => {
+      const bellState = bellStateSelect.value;
+      const shots = document.getElementById("shots").value;
+      if (!bellState) return alert("⚠️ Please select a Bell state first!");
+      document.getElementById("loadingOverlay").style.display = "flex";
+
+      const res = await fetch("/run_simulation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bell_state: bellState, shots })
+      });
+      const data = await res.json();
+      document.getElementById("loadingOverlay").style.display = "none";
+
+      if (data.status === "success") {
+        showToast("✅ Simulation completed successfully!");
+        descBox.style.display = "block";
+        descBox.innerHTML = `<b>${data.bell_label}</b><br>${data.description}<br><i>${data.phase_info}</i>`;
+        imgs.circuit.src = "data:image/png;base64," + data.circuit_img;
+        imgs.bloch.src = "data:image/png;base64," + data.bloch_img;
+        imgs.hist.src = "data:image/png;base64," + data.hist_img;
+        stateText.textContent = data.statevector.join("\n");
+      } else {
+        alert(data.message);
+      }
+    });
+
+    document.querySelectorAll(".result-card img").forEach(img => {
+      img.addEventListener("click", () => {
+        zoomImg.src = img.src;
+        zoomModal.style.display = "block";
+      });
+    });
+    document.querySelector(".close").onclick = () => zoomModal.style.display = "none";
+
+    resetBtn.addEventListener("click", () => {
+      bellStateSelect.value = "";
+      descBox.style.display = "none";
+      stateText.textContent = "";
+      Object.values(imgs).forEach(i => i.src = "");
+    });
+
+    modeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("light-mode");
+      if (document.body.classList.contains("light-mode")) {
+        modeToggle.textContent = "🌑 Toggle Dark Mode";
+      } else {
+        modeToggle.textContent = "🌙 Toggle Light Mode";
+      }
+    });
+  </script>
+</body>
+</html>
